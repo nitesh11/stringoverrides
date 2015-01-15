@@ -9,6 +9,7 @@ namespace Drupal\stringoverrides\Form;
 
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Component\Utility\String;
 // use Symfony\Component\HttpFoundation\Request;
 
 class StringOverridesConfiguration extends ConfigFormBase {
@@ -20,7 +21,7 @@ class StringOverridesConfiguration extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
 
     $userInputValues = $form_state->getUserInput();
-    dsm($userInputValues);
+    dsm($form);
     $config = \Drupal::config('stringoverrides.settings');
 
     if (empty($lang)) {
@@ -58,7 +59,6 @@ class StringOverridesConfiguration extends ConfigFormBase {
         }
       }
     }
-    dsm($string);
     // See how many string rows there should be.
     $string_count = 0;
     if (isset($userInputValues['string_count'])) {
@@ -98,44 +98,87 @@ class StringOverridesConfiguration extends ConfigFormBase {
         'effect' => 'none',
       ),
     );
-    $form['actions']['save'] = array(
-      '#type' => 'submit',
-      '#value' => t('Save configuration'),
-      '#weight' => 3,
-    );
     $form['actions']['remove'] = array(
       '#type' => 'submit',
       '#value' => t('Remove disabled strings'),
       '#weight' => 4,
       '#access' => !empty($strings),
     );
+
     return parent::buildForm($form, $form_state);
   }
 
   public function submitForm(array &$form, FormStateInterface $form_state) {
-    // $userInputValues = $form_state->getUserInput();
-    // $config = $this->configFactory->get('time_spent.settings');
-    // $config->set('time_spent_node_types', $userInputValues['time_spent_node_types']);
-    // $config->set('time_spent_pager_limit', $userInputValues['time_spent_pager_limit']);
-    // $config->set('time_spent_roles', $userInputValues['time_spent_roles']);
-    // $config->set('time_spent_timer', $userInputValues['time_spent_timer']);
-    // $config->set('time_spent_limit', $userInputValues['time_spent_limit']);
-    // $config->save();
-    // parent::submitForm($form, $form_state);
+
+    $userInputValues = $form_state->getUserInput();
+    $config = $this->configFactory->get('time_spent.settings');
+    $clicked_button = '';
+
+    foreach ($form_state->getButtons() as $key => $value) {
+      if ($value['#value'] == $userInputValues['op']) {
+        $clicked_button = $value['#id'];
+      }
+    }
+    if (!in_array($clicked_button, array('edit-submit', 'edit-remove'))) {
+      // Submit the form only for save and remove buttons.
+      return;
+    }
+    
+    // Format the words correctly so that they're put into the database correctly.
+    dsm($userInputValues);
+    $words = array();
+    $words = array(FALSE => array(), TRUE => array());
+    foreach ($userInputValues as $index => $string) {
+      if(is_array($string)) {
+        dsm($string);
+        if (!empty($string['source'])) {
+          $context = String::checkPlain($string['context']);
+          dsm($context);
+          // Get rid of carriage returns.
+          list($source, $translation) = str_replace("\r", '', array($string['source'], $string['translation']));
+          $words[$string['enabled']][$context][$source] = $translation;
+        }
+      }
+    }
+    dsm($words);
+    
+
+    // Save into the correct language definition.
+    $lang = $form['lang']['#value'];
+    if (empty($lang)) {
+      global $language;
+      $lang = $language->language;
+    }
+    $config->set('locale_custom_strings_$lang',$words[1]);
+
+    // Save the values and display a message to the user depend.
+    switch ($clicked_button) {
+      case 'edit-submit':
+        $config->set('locale_custom_disabled_strings_$lang',$words[0]);
+        drupal_set_message(t('Your changes have been saved.'));
+        break;
+
+      case 'edit-remove':
+        Drupal::state()->delete("locale_custom_disabled_strings_$lang");
+        drupal_set_message(t('The disabled strings have been removed.'));
+        break;
+    }
+    parent::submitForm($form, $form_state);
   }
 }
 
 function stringoverrides_textbox_combo($delta = 0, $enabled = TRUE, $context = '', $source = '', $translation = '') {
   $form['#tree'] = TRUE;
+
   $form['enabled'] = array(
     '#type' => 'checkbox',
     '#default_value' => ($enabled == -1) ? TRUE : $enabled,
-    // Have access if it's not a placeholder value.
-    '#access' => $enabled != -1,
+    // '#access' => $enabled != -1,
     '#attributes' => array(
       'title' => t('Flag whether this override should be active.'),
     ),
   );
+
   $form['source'] = array(
     '#type' => 'textarea',
     '#default_value' => $source,
@@ -180,6 +223,58 @@ function stringoverrides_textbox_combo($delta = 0, $enabled = TRUE, $context = '
  * Menu callback; Display a new string override.
  */
 function stringoverrides_ajax(array $form, FormStateInterface $form_state) {
-    dsm("d,jhd");
   return $form['string'];
+}
+
+/**
+ * Submit handler; The "Add row" button.
+ */
+function stringoverrides_more_strings_submit(array $form, FormStateInterface $form_state) {
+  $userInputValues = $form_state->getUserInput();
+  // $form_state['string_count'] = count($userInputValues['string']) + 1;
+  $form_state->setRebuild(True);
+}
+
+/**
+ * Sorts two words based on their source text.
+ */
+function stringoverrides_admin_word_sort($word1, $word2) {
+  return strcasecmp($word1['source'], $word2['source']);
+}
+
+/**
+ * Theme the enabled box and the two text box strings
+ */
+function theme_stringoverrides_strings($variables) {
+  $form = $variables['form'];
+  $rows = array();
+  foreach (element_children($form) as $key) {
+    // Build the table row.
+    $rows[$key] = array(
+      'data' => array(
+        array('data' => drupal_render($form[$key]['enabled']), 'class' => 'stringoverrides-enabled'),
+        array('data' => drupal_render($form[$key]['source']), 'class' => 'stringoverrides-source'),
+        array('data' => drupal_render($form[$key]['translation']), 'class' => 'stringoverrides-translation'),
+        array('data' => drupal_render($form[$key]['context']), 'class' => 'stringoverrides-context'),
+      ),
+    );
+    // Add any attributes on the element to the row, such as the ahah class.
+    if (array_key_exists('#attributes', $form[$key])) {
+      $rows[$key] = array_merge($rows[$key], $form[$key]['#attributes']);
+    }
+  }
+  $header = array(
+    ($form[0]['enabled']['#access']) ? array('data' => t('Enabled'), 'title' => t('Flag whether the given override should be active.')) : NULL,
+    array('data' => t('Original'), 'title' => t('The original source text to be replaced.')),
+    array('data' => t('Replacement'), 'title' => t('The text to replace the original source text.')),
+    array('data' => t('Context'), 'title' => t('Some strings have context applied to them. In those cases, you can provide the context in this column.')),
+  );
+
+  $output = theme('table', array(
+    'header' => $header,
+    'rows' => $rows,
+    'attributes' => array('id' => 'stringoverrides-wrapper'),
+  ));
+  $output .= drupal_render_children($form);
+  return $output;
 }
