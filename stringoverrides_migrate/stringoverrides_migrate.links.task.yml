@@ -1,0 +1,17 @@
+stringoverrides.config:
+  route_name: stringoverrides.config
+  title: 'OVERRIDES'
+  base_route: stringoverrides.config
+  weight: 1
+
+stringoverrides_migrate.import:
+  route_name: stringoverrides_migrate.import
+  title: 'IMPORT'
+  base_route: stringoverrides.config
+  weight: 2
+
+stringoverrides_migrate.export:
+  route_name: stringoverrides_migrate.export
+  title: 'EXPORT'
+  base_route: stringoverrides.config
+  weight: 3

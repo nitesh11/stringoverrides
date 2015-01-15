@@ -1,0 +1,13 @@
+stringoverrides_migrate.import:
+  path: '/admin/config/regional/stringoverrides/import'
+  defaults:
+    _form: '\Drupal\stringoverrides_migrate\Form\StringOverridesImport'
+  requirements:
+    _permission: 'administer string overrides'
+
+stringoverrides_migrate.export:
+  path: '/admin/config/regional/stringoverrides/export'
+  defaults:
+    _form: '\Drupal\stringoverrides_migrate\Form\StringOverridesExport'
+  requirements:
+    _permission: 'administer string overrides'

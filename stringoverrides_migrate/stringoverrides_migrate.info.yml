@@ -1,0 +1,13 @@
+name: String Overrides Migrate
+type: module
+description: Tools for importing and exporting string override settings.
+dependencies: 
+  - stringoverrides
+core: 8.x
+
+# Information added by drupal.org packaging script on 2011-05-03
+version: "8.x-1.x"
+core: "8.x"
+project: "stringoverrides"
+datestamp: "1304446316"
+

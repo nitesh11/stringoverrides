@@ -1,0 +1,6 @@
+stringoverrides.config:
+  path: '/admin/config/regional/stringoverrides'
+  defaults:
+    _form: '\Drupal\stringoverrides\Form\StringOverridesConfiguration'
+  requirements:
+    _permission: 'administer string overrides'

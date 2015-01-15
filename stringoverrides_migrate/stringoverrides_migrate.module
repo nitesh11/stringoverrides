@@ -1,0 +1,47 @@
+<?php
+
+/**
+ * @file
+ * Configuration interface to provide a quick and easy way of replacing text.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+
+/**
+ * Implements hook_help().
+ */
+function stringoverrides_migrate_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'stringoverrides_migrate.import':
+      $output = '<p>' . t('Upload a *.po file here to import a collection of strings.') . '</p>';
+      $output .= '<p>' . t('The current string overrides for the selected language will be overwritten with the content of the file.') . '</p>';
+      return $output;
+    case 'stringoverrides_migrate.export':
+      return '<p>' . t('The following is a generated *.po file. You can use this feature to backup the current String Overrides.') . '</p>';
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function stringoverrides_migrate_menu() {
+  $items['admin/config/regional/stringoverrides/import'] = array(
+    'title' => 'Import',
+    'description' => 'Import a set of overrides from a *.po file.',
+    'page arguments' => array('stringoverrides_migrate_admin_import'),
+    'access arguments' => array('administer string overrides'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 9,
+    'file' => 'stringoverrides_migrate.admin.inc',
+  );
+  $items['admin/config/regional/stringoverrides/export'] = array(
+    'title' => 'Export',
+    'description' => 'Export a set of overrides to a *.po file.',
+    'page arguments' => array('stringoverrides_migrate_admin_export'),
+    'access arguments' => array('administer string overrides'),
+    'type' => MENU_LOCAL_TASK,
+    'weight' => 10,
+    'file' => 'stringoverrides_migrate.admin.inc',
+  );
+  return $items;
+}

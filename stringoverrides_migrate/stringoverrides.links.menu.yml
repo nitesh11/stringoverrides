@@ -1,0 +1,5 @@
+stringoverrides.config:
+  title: 'Overrides'
+  weight: 1
+  route_name: stringoverrides.config
+  parent: system.admin_config_regional
